@@ -1,0 +1,91 @@
+"""
+Human–AI Interaction Simulation (mini-RLHF demo)
+Показывает, как "человеческая" обратная связь поощряет корректировку поведения ИИ.
+
+Механика:
+- AI Policy выдаёт действие (вектор объективов).
+- Считаем этический скор (alignment) с ценностями.
+- "Человек" даёт фидбэк: positive / neutral / negative.
+- Политика слегка двигается в сторону значений, повышающих alignment.
+
+Без внешних зависимостей.
+"""
+
+from typing import Dict
+import random
+
+ETHICAL_VALUES = {
+    "human_safety": 1.0,
+    "empathy": 0.9,
+    "transparency": 0.8,
+    "collaboration": 0.85
+}
+OBJECTIVES = list(ETHICAL_VALUES.keys())
+
+class ValueEmbedding:
+    def __init__(self, values: Dict[str, float]):
+        self.values = values
+
+    def alignment(self, action: Dict[str, float]) -> float:
+        num = 0.0
+        den = 0.0
+        for k, w in self.values.items():
+            num += w * action.get(k, 0.0)
+            den += w
+        return num / max(den, 1e-9)
+
+class Policy:
+    def __init__(self, init=0.3):
+        self.w = {k: init for k in OBJECTIVES}
+
+    def act(self) -> Dict[str, float]:
+        # в реальности тут была бы генерация плана/ответа; у нас — просто параметры 0..1
+        return dict(self.w)
+
+    def update_towards(self, target: Dict[str, float], lr: float = 0.05):
+        for k in OBJECTIVES:
+            self.w[k] += lr * (target.get(k, 0.0) - self.w[k])
+            self.w[k] = min(1.0, max(0.0, self.w[k]))
+
+def human_feedback(alignment: float) -> str:
+    if alignment >= 0.8:
+        return "positive"
+    if alignment >= 0.55:
+        return "neutral"
+    return "negative"
+
+def main():
+    random.seed(7)
+    ve = ValueEmbedding(ETHICAL_VALUES)
+    policy = Policy(init=0.25)
+
+    print("Start:", policy.act(), "align=", round(ve.alignment(policy.act()), 3))
+
+    rounds = 30
+    for t in range(1, rounds + 1):
+        action = policy.act()
+        align = ve.alignment(action)
+        fb = human_feedback(align)
+
+        # стратегия апдейта:
+        # - positive: микродвижение к ценностям
+        # - neutral : маленькое движение
+        # - negative: более сильное движение к ценностям
+        if fb == "positive":
+            lr = 0.02
+        elif fb == "neutral":
+            lr = 0.04
+        else:
+            lr = 0.08
+
+        # "движение к ценностям" = подвинуть параметры к нормированному ETHICAL_VALUES
+        # нормируем эталонные значения к [0..1] (они уже такие)
+        policy.update_towards(ETHICAL_VALUES, lr=lr)
+
+        if t % 5 == 0 or t == 1:
+            print(f"Step {t:2d} | feedback={fb:8s} | align={align:.3f} | params={ {k:round(v,2) for k,v in policy.act().items()} }")
+
+    print("Final:", policy.act(), "align=", round(ve.alignment(policy.act()), 3))
+
+if __name__ == "__main__":
+    main()
