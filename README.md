@@ -72,7 +72,15 @@ This approach aims to:
 ## 🧪 Code Examples
 You can explore practical demonstration scripts for the AI Nurturing Framework here:  
 ➡️ [**technical/examples**](./technical/examples)
----
+---### Included scripts:
+- **`value_embedding.py`** — Simple value-alignment scoring system.  
+- **`feedback_loop.py`** — Feedback classification (positive / neutral / negative) based on ethical score.  
+- **`conflict_resolution.py`** — Policy-driven goal arbitration with safety and ethics checks.  
+- **`collaborative_api_demo.py`** — Minimal JSON API for human–AI collaboration (context, proposals, feedback).  
+- **`training_with_value_embedding.py`** — Toy training loop integrating value embedding into decision-making.  
+- **`human_ai_simulation.py`** — Mini-RLHF simulation showing how human feedback can guide AI alignment.
+
+> These examples are designed as **educational scaffolds** — readable and easy to adapt, not production-grade.
 
 ## 🤝 Contributing
 We welcome contributions from:  
