@@ -1,0 +1,3 @@
+- Value changes touching axioms with priority>=80 require: Human Lead + Ethics Board token.
+- High-risk actions (p_severe_harm>0.05) require ARB consensus and explicit justification.
+- All negotiations are logged to an immutable audit log.

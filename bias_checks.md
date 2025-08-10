@@ -1,0 +1,3 @@
+- Counterfactual fairness probes every N episodes.
+- Equalized odds dashboards with alert thresholds.
+- HANI 'bias_ticket' flow enabling appeals from any party.
