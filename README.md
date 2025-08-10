@@ -69,7 +69,9 @@ This approach aims to:
 - [/manifest](./manifest) – Core manifesto text.  
 - [/technical](./technical) – Detailed technical specifications and example code.  
 - [/resources](./resources) – Research papers, articles, and reference materials.  
-
+## 🧪 Code Examples
+You can explore practical demonstration scripts for the AI Nurturing Framework here:  
+➡️ [**technical/examples**](./technical/examples)
 ---
 
 ## 🤝 Contributing
