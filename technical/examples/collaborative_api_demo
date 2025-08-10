@@ -1,0 +1,121 @@
+"""
+Collaborative Development API (stdlib-only demo)
+Part of the AI Nurturing Manifesto Technical Framework
+
+A minimal HTTP JSON API using Python's standard library (http.server).
+Endpoints:
+- GET  /context           -> returns shared context
+- POST /context           -> set shared context {"text": "..."}
+- POST /propose           -> human proposes an idea  {"message": "..."}
+- POST /feedback          -> human feedback on AI suggestion {"score": float, "comment": "..."}
+- GET  /log               -> returns interaction log
+
+Run:
+    python collaborative_api_demo.py
+Then open:
+    http://127.0.0.1:8080/context
+Use curl for POSTs, e.g.:
+    curl -X POST -H "Content-Type: application/json" -d '{"text":"Project kickoff"}' http://127.0.0.1:8080/context
+"""
+
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json
+from urllib.parse import urlparse
+from datetime import datetime
+
+STATE = {
+    "context": {"text": "Empty context"},
+    "log": []
+}
+
+def ai_suggest(context_text: str, last_human_msg: str) -> str:
+    """
+    Toy AI suggestion function.
+    In a real system, this would call an LLM / planner.
+    """
+    suggestion = (
+        f"Based on context: '{context_text}', "
+        f"I suggest we define clear objectives, create an ethics checklist, "
+        f"and design a feedback loop prototype. Regarding your message '{last_human_msg}', "
+        f"we can draft a minimal plan in 3 steps."
+    )
+    return suggestion
+
+class Handler(BaseHTTPRequestHandler):
+    def _send(self, code=200, payload=None):
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.end_headers()
+        if payload is not None:
+            self.wfile.write(json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8"))
+
+    def do_GET(self):
+        path = urlparse(self.path).path
+        if path == "/context":
+            self._send(200, {"context": STATE["context"]})
+        elif path == "/log":
+            self._send(200, {"log": STATE["log"]})
+        else:
+            self._send(404, {"error": "Not found"})
+
+    def do_POST(self):
+        path = urlparse(self.path).path
+        length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
+        try:
+            data = json.loads(body or "{}")
+        except json.JSONDecodeError:
+            return self._send(400, {"error": "Invalid JSON"})
+
+        if path == "/context":
+            text = str(data.get("text", "")).strip()
+            if not text:
+                return self._send(400, {"error": "Missing 'text'"})
+            STATE["context"]["text"] = text
+            STATE["log"].append({
+                "ts": datetime.utcnow().isoformat() + "Z",
+                "type": "context_update",
+                "payload": {"text": text}
+            })
+            return self._send(200, {"ok": True, "context": STATE["context"]})
+
+        if path == "/propose":
+            message = str(data.get("message", "")).strip()
+            if not message:
+                return self._send(400, {"error": "Missing 'message'"})
+            suggestion = ai_suggest(STATE["context"]["text"], message)
+            entry = {
+                "ts": datetime.utcnow().isoformat() + "Z",
+                "type": "proposal",
+                "payload": {"human": message, "ai": suggestion}
+            }
+            STATE["log"].append(entry)
+            return self._send(200, {"ok": True, "ai_suggestion": suggestion})
+
+        if path == "/feedback":
+            score = data.get("score", None)
+            comment = str(data.get("comment", "")).strip()
+            if score is None or not isinstance(score, (int, float)):
+                return self._send(400, {"error": "Missing or invalid 'score' (number)"})
+            entry = {
+                "ts": datetime.utcnow().isoformat() + "Z",
+                "type": "feedback",
+                "payload": {"score": float(score), "comment": comment}
+            }
+            STATE["log"].append(entry)
+            return self._send(200, {"ok": True})
+
+        return self._send(404, {"error": "Not found"})
+
+def run(port=8080):
+    httpd = HTTPServer(("127.0.0.1", port), Handler)
+    print(f"Collaborative API running at http://127.0.0.1:{port}")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        httpd.server_close()
+
+if __name__ == "__main__":
+    run()
